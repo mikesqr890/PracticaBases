@@ -1,4 +1,5 @@
 import mysql.connector
+from datetime import datetime
 
 try: 
     conexion = mysql.connector.connect(
@@ -6,13 +7,16 @@ try:
         user="root",
         password="12345678",
         database="tiendaMysql")
+    
     if conexion.is_connected():
         print("Conexión exitosa a la tiendaMysql")
+
 except Exception as e:
     print(f"Error al conectar a la tiendaMysql: {e}")
 
 cursor = conexion.cursor()
 
+# ---------------- CLIENTES ----------------
 def registrar_cliente(cursor, conexion):
     nombre = input("Nombre: ")
     telefono = input("Telefono: ")
@@ -26,10 +30,12 @@ def registrar_cliente(cursor, conexion):
 
     print("Cliente registrado")
 
+
+# ---------------- PRODUCTOS ----------------
 def registrar_producto(cursor, conexion):
     nombre = input("Nombre del producto: ")
     precio = float(input("Precio: "))
-    stock= int(input("Stock: "))
+    stock = int(input("Stock: "))
 
     sql = "INSERT INTO productos (nombreProducto, precio, stock) VALUES (%s, %s, %s)"
     valores = (nombre, precio, stock)
@@ -39,8 +45,8 @@ def registrar_producto(cursor, conexion):
 
     print("Producto registrado")
 
-from datetime import datetime
 
+# ---------------- VENTAS ----------------
 def registrar_venta(cursor, conexion):
     print("\n--- REGISTRAR VENTA ---")
 
@@ -65,7 +71,7 @@ def registrar_venta(cursor, conexion):
     id_producto = int(input("Ingrese ID del producto: "))
     cantidad = int(input("Cantidad: "))
 
-    # 🔥 VALIDACIÓN CORRECTA
+    # Validar fecha
     while True:
         fecha_input = input("Fecha (YYYY-MM-DD) o ENTER para hoy: ")
         try:
@@ -75,26 +81,38 @@ def registrar_venta(cursor, conexion):
                 fecha = datetime.strptime(fecha_input, "%Y-%m-%d").date()
             break
         except:
-            print("❌ Formato incorrecto. Usa YYYY-MM-DD")
+            print("Formato incorrecto. Usa YYYY-MM-DD")
 
-    # Insertar
-    sql = "INSERT INTO ventas (idCliente, idProducto, fecha, cantidad) VALUES (%s, %s, %s, %s)"
-    valores = (id_cliente, id_producto, fecha, cantidad)
+    # INSERT 1: ventas (SIN idProducto)
+    sql = "INSERT INTO ventas (idCliente, fecha, cantidad) VALUES (%s, %s, %s)"
+    valores = (id_cliente, fecha, cantidad)
 
     cursor.execute(sql, valores)
     conexion.commit()
 
-    print(" Venta registrada correctamente")
+    # Obtener id de la venta creada
+    id_venta = cursor.lastrowid
+
+    # INSERT 2: ventaproducto
+    sql_vp = "INSERT INTO ventaproducto (idVenta, idProducto) VALUES (%s, %s)"
+    valores_vp = (id_venta, id_producto)
+
+    cursor.execute(sql_vp, valores_vp)
+    conexion.commit()
+
+    print("Venta registrada correctamente")
 
 
+# ---------------- CONSULTA ----------------
 def mostrar_ventas(cursor):
     print("\n--- LISTADO DE VENTAS ---")
 
     cursor.execute("""
-    SELECT c.nombreCliente, p.nombreProducto, v.fecha,v.cantidad
+    SELECT c.nombreCliente, p.nombreProducto, v.fecha, v.cantidad
     FROM ventas v
     JOIN clientes c ON v.idCliente = c.idCliente
-    JOIN productos p ON v.idProducto = p.idProducto
+    JOIN ventaproducto vp ON v.idVenta = vp.idVenta
+    JOIN productos p ON vp.idProducto = p.idProducto
     """)
 
     resultados = cursor.fetchall()
@@ -102,11 +120,13 @@ def mostrar_ventas(cursor):
     if len(resultados) == 0:
         print("No hay ventas registradas")
     else:
-        print("\nCliente | Producto | Cantidad")
-        print("-" * 35)
+        print("\nCliente | Producto | Fecha | Cantidad")
+        print("-" * 50)
         for fila in resultados:
-            print(f"{fila[0]} | {fila[1]} | {fila[2]}")
+            print(f"{fila[0]} | {fila[1]} | {fila[2]} | {fila[3]}")
 
+
+# ---------------- MENÚ ----------------
 while True:
     print("\n--- MENÚ ---")
     print("1. Registrar cliente")
