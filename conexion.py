@@ -5,8 +5,8 @@ try:
     conexion = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="12345678",
-        database="tiendaMysql")
+        password="9696",
+        database="tiendasql")
     
     if conexion.is_connected():
         print("Conexión exitosa a la tiendaMysql")
